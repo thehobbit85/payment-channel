@@ -93,36 +93,37 @@ PaymentChannel.prototype.getAccountBalance = function(multisigAddress,cb) {
   cb)
 }
 
-PaymentChannel.prototype.createTick = function(multisigAddress,receivingAddress, cb) {
+PaymentChannel.prototype.createTick = function(multisigObject,receivingAddress, cb) {
   var unspents
+  var self = this
 
-  this.chain.getAddressUnspents(multisigAddress, function(err, unspents) {
+  this.chain.getAddressUnspents(multisigObject.multisigAddress, function(err, unspents) {
     if (err) return cb(err)
 
-    var publicKeys = multisigAddress.publicKeys
+    var publicKeys = multisigObject.publicKeys
     publicKeys = publicKeys.map(bitcoin.ECPubKey.fromHex)
-    var returnAddress = multisigAddress.returnAddress
-    var lastAmount = multisigAddress.lastAmount || 0
+    var returnAddress = multisigObject.returnAddress
+    var lastAmount = multisigObject.lastAmount || 0
     var txb = new bitcoin.TransactionBuilder()
     var value = 0
     var numOfSigns = 0
-    var amount = lastAmount+this.tickAmount
+    var amount = lastAmount+self.tickAmount
     unspents.forEach(function(unspent) {
       numOfSigns++
       value += unspent.value
       txb.addInput(unspent.transaction_hash, unspent.output_index)
     })
-    if (value < amount + fee) {
+    if (value < amount + self.fee) {
       return callback('Out of money, needs '+amount+', but you have only '+(value-fee)+'. Please deposite more money...')
     }
 
     txb.addOutput(receivingAddress, amount)
-    txb.addOutput(returnAddress, value-amount-fee)
+    txb.addOutput(returnAddress, value-amount-self.fee)
    
     var tx = txb.buildIncomplete()
-    multisigAddress.lastUnsignTxid = tx.getId()
-    multisigAddress.numOfSigns = numOfSigns
-    multisigAddress.lastTickTx = tx.toHex()
+    multisigObject.lastUnsignTxid = tx.getId()
+    multisigObject.numOfSigns = numOfSigns
+    multisigObject.lastTickTx = tx.toHex()
 
     cb(null, multisigObject)
   })
