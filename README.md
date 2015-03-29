@@ -1,8 +1,48 @@
-# payment-channel
+# Payment-Channel
 
-Two JavaScript modules that will create a payment channel between the server side (nodejs) and the client side (JavaScript jQuery) on top of Socket.io framework. With a payment channel you can provide a trust-less time/token based payment system that provide both the user's and the provider protection against fruad and it's currently the best way of providing this kind of service.
+## Payment Channel API
 
-### Payment Channel's Option Object 
+A bitcoin payment channel API that allowes you to provide a trust-less time/token based payment system that provide both the user and the provider protection against fruad and it's currently the best way of providing this kind of service.
+
+
+## Payment Channel Socket API
+
+Two JavaScript modules that will create a payment channel between the server side (nodejs) and the client side (JavaScript) on top of Socket.io framework.
+
+# Configuration Objects
+
+### v1.0.1 API 
+
+#### Payment Channel Option Object
+
+```json
+{
+  "chain" : {
+    "keyId": "String",
+    "keySecret": "String",
+    "blockChain": "String"
+  },
+  "counterPartyPublicKey" : "String",
+  "returnAddress" : "String",
+  "counterPartyAddress" : "String", 
+  
+  "privateKey" : "String",
+
+  "publicKeys" : ["String"],
+  "fee" : "Number",
+  "tickAmount" : "Number"
+  "lastAmount" : "Number",
+  "lastSignedTx" : "String",
+  "redeemScript" : "String",
+  "balance" : "Number"
+
+  "multisigAddress" : "String",
+}
+```
+
+### v1.0.0 API 
+
+#### Payment Channel's Option Object 
 
 ```json
 {
@@ -31,35 +71,6 @@ Two JavaScript modules that will create a payment channel between the server sid
   "redeemScript" : "String",
   "numOfSigns" : "Number",
   "balance" : "Number"
-}
-```
-## v1.0.1 API 
-
-### Payment Channel Option Object
-
-```json
-{
-  "chain" : {
-    "keyId": "String",
-    "keySecret": "String",
-    "blockChain": "String"
-  },
-  "counterPartyPublicKey" : "String",
-  "returnAddress" : "String",
-  "counterPartyAddress" : "String", 
-  
-  "privateKey" : "String",
-
-  "publicKeys" : ["String"],
-  "fee" : "Number",
-  "tickAmount" : "Number"
-  "lastAmount" : "Number",
-  "lastSignedTx" : "String",
-  "firstTxId" : "String",
-  "redeemScript" : "String",
-  "balance" : "Number"
-
-  "multisigAddress" : "String",
 }
 ```
 
