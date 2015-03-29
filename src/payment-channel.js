@@ -1,6 +1,6 @@
 var bitcoin = require('bitcoinjs-lib')
-var async = require('async')
 var Chain = require('chain-node')
+var qr = require('qr-encode')
  
 function PaymentChannel(options) {
   this.network = options.network || bitcoin.networks.testnet
@@ -9,7 +9,28 @@ function PaymentChannel(options) {
   this.tickAmount = options.tickAmount || 600
 }
 
-PaymentChannel.prototype.getNewMultisigObject = function(firstPublicKey,secondPublicKey) {
+PaymentChannel.prototype.getNewPrivateKey = function() {
+  return bitcoin.ECKey.makeRandom().toWIF(this.network)
+}
+
+PaymentChannel.prototype.getPubFromPriv = function(privateKey) {
+  return bitcoin.ECKey.fromWIF(privateKey).pub.toHex();
+}
+
+PaymentChannel.prototype.getQR = function(data,type,size,level) {
+    
+  var dataURI = qr(data, {type: type, size: size, level: level})
+
+  //If using in browsers:
+  if (typeof window !== 'undefined') {
+    var img = new Image()
+    img.src = dataURI
+    return img
+  }
+  else return dataURI
+}
+
+PaymentChannel.prototype.getNewMultisigObject = function(firstPublicKey,secondPublicKey) {  
   
   var multiSigData = this.getMultisigFromPublicKeys(firstPublicKey,secondPublicKey)
 
@@ -35,6 +56,7 @@ PaymentChannel.prototype.getNewMultisigObject = function(firstPublicKey,secondPu
 }
 
 PaymentChannel.prototype.getMultisigFromPublicKeys = function(firstPublicKey,secondPublicKey) {
+  
   var firstPublicKey = bitcoin.ECPubKey.fromHex(firstPublicKey)
     secondPublicKey = bitcoin.ECPubKey.fromHex(secondPublicKey),
     pubKeys = [firstPublicKey, secondPublicKey],
@@ -57,45 +79,37 @@ PaymentChannel.prototype.getMultisigFromPublicKeys = function(firstPublicKey,sec
 PaymentChannel.prototype.getAccountBalance = function(multisigAddress,cb) {
   
   var value = 0,
-    firstTxId
+    firstTxId,
+    self = this
   
-  var self = this
-
-  async.waterfall([
-    function(callback) {
-      self.chain.getAddressUnspents(multisigAddress.multisigAddress, callback)
-    },
-    function(utxos, callback) {
-      utxos.forEach(function(utxo) {
-        value+=utxo.value
-      })
-      if (value) {
-        firstTxId = utxos[0].transaction_hash
-      }
-      callback(null ,firstTxId)
-    },
-    function(firstTxId, callback) {
+  this.chain.getAddressUnspents(multisigAddress.multisigAddress, function(err, utxos){
+    if (err) return cb(err)
+    utxos.forEach(function(utxo) {
+      value+=utxo.value
+    })
+    if (value) {
+      firstTxId = utxos[0].transaction_hash
       multisigAddress.balance = value
-      if (firstTxId) {
-        multisigAddress.firstTxId = firstTxId
-        if (!multisigAddress.returnAddress || multisigAddress.returnAddress === "") {
-          self.chain.getTransaction(firstTxId, callback)
-        }
-        else callback('error')
-      }
-      else callback('error')
-    },
-    function(res, callback) {
-      multisigAddress.returnAddress = res.inputs[0].addresses[0]
-      callback(null,multisigAddress)
     }
-  ],
-  cb)
+    if (firstTxId) {
+      multisigAddress.firstTxId = firstTxId
+      if (!multisigAddress.returnAddress || multisigAddress.returnAddress === "") {
+        self.chain.getTransaction(firstTxId, function(err,res){
+          if (err) cb(err)
+          multisigAddress.returnAddress = res.inputs[0].addresses[0]
+          cb(null,multisigAddress)
+        })
+      }
+      else cb('error')
+    }
+    else cb('error')
+  })
 }
 
 PaymentChannel.prototype.createTick = function(multisigObject,receivingAddress, cb) {
-  var unspents
-  var self = this
+  
+  var unspents,
+    self = this
 
   this.chain.getAddressUnspents(multisigObject.multisigAddress, function(err, unspents) {
     if (err) return cb(err)
@@ -158,7 +172,6 @@ PaymentChannel.prototype.closePaymentChannel = function(multisigObject,secondPri
 PaymentChannel.prototype.firstSignTick = function(multisigAddress,firstPrivateKey,cb) {
   
   var privateKeyObject = bitcoin.ECKey.fromWIF(privateKey)
-
   var tx = bitcoin.Transaction.fromHex(multisigAddress.lastTickTx)
   var txb = bitcoin.TransactionBuilder.fromTransaction(tx)
             
@@ -175,7 +188,6 @@ PaymentChannel.prototype.firstSignTick = function(multisigAddress,firstPrivateKe
   
   cb(null,multisigAddress)
 }
-
 
 module.exports = PaymentChannel;
 

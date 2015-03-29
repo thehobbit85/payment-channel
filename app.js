@@ -3,7 +3,6 @@ var paymentChannel = require (__dirname  + "src/payment-channel.js")
 var app = require('express')
 var socket.io = require('socket.io')
 var db = require('db')
-var async = require('async')
 
 module.exports = function (options) {
   
@@ -37,4 +36,6 @@ module.exports = function (options) {
   })
 
 }
-   
+
+// sudo browserify ./src/payment-channel.js > ./src/payment-channel.client.js
+// sudo uglifyjs ./src/payment-channel.client.js > ./src/payment-channel.min.js
