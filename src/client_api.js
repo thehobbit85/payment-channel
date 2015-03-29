@@ -1,7 +1,7 @@
 var createKeysAndQR = function(cb) {
 
   if (!localStorage.getItem("privateKey")) {
-    var privateKey = window.microstream.getNewPrivateKey('bitcoin');
+    var privateKey = window.microstream.getNewPrivateKey('testnet');
     var publicKey = window.microstream.get_pub_from_priv(privateKey);
     localStorage.setItem("privateKey", privateKey);
     localStorage.setItem("publicKey", publicKey);
