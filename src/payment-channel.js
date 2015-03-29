@@ -3,10 +3,31 @@ var Chain = require('chain-node')
 var qr = require('qr-encode')
  
 function PaymentChannel(options) {
-  this.network = options.network || bitcoin.networks.testnet
+  this.network = bitcoin.networks[options.chain.blockChain]
   this.chain = new Chain(options.chain)
   this.fee = options.fee || 1000
   this.tickAmount = options.tickAmount || 600
+}
+
+var getMultisigFromPublicKeys = function(myPublicKey,secondPartyPublicKey) {
+  
+  var firstPublicKey = bitcoin.ECPubKey.fromHex(myPublicKey)
+    secondPublicKey = bitcoin.ECPubKey.fromHex(secondPartyPublicKey),
+    pubKeys = [firstPublicKey, secondPublicKey],
+    redeemScript = bitcoin.scripts.multisigOutput(2, pubKeys), // 2 of 2
+    scriptPubKey = bitcoin.scripts.scriptHashOutput(redeemScript.getHash()),
+    address = bitcoin.Address.fromOutputScript(scriptPubKey, this.network).toString()
+
+  if (address) {
+    return {
+      pubKeys : pubKeys,
+      redeemScript : redeemScript,
+      address : address
+    }
+  }
+  else {
+    throw 'address error'
+  }
 }
 
 PaymentChannel.prototype.getNewPrivateKey = function() {
@@ -30,9 +51,9 @@ PaymentChannel.prototype.getQR = function(data,type,size,level) {
   else return dataURI
 }
 
-PaymentChannel.prototype.getNewMultisigObject = function(firstPublicKey,secondPublicKey) {  
+PaymentChannel.prototype.getNewMultisigObject = function(myPublicKey,secondPartyPublicKey,returnAddress) {  
   
-  var multiSigData = this.getMultisigFromPublicKeys(firstPublicKey,secondPublicKey)
+  var multiSigData = getMultisigFromPublicKeys(myPublicKey,secondPartyPublicKey)
 
   if (multiSigData && multiSigData.address) {
     var data = {
@@ -41,7 +62,7 @@ PaymentChannel.prototype.getNewMultisigObject = function(firstPublicKey,secondPu
         return x.toHex()
       }),
       redeemScript : multiSigData.redeemScript.toHex(),
-      returnAddress : "", 
+      returnAddress : returnAddress
       lastAmount : 0,
       lastUnsignTxid : "",
       lastSignedTx : "",
@@ -52,68 +73,48 @@ PaymentChannel.prototype.getNewMultisigObject = function(firstPublicKey,secondPu
     }
     return data
   }
-  else return null
+  else throw 'address error'
 }
 
-PaymentChannel.prototype.getMultisigFromPublicKeys = function(firstPublicKey,secondPublicKey) {
-  
-  var firstPublicKey = bitcoin.ECPubKey.fromHex(firstPublicKey)
-    secondPublicKey = bitcoin.ECPubKey.fromHex(secondPublicKey),
-    pubKeys = [firstPublicKey, secondPublicKey],
-    redeemScript = bitcoin.scripts.multisigOutput(2, pubKeys), // 2 of 2
-    scriptPubKey = bitcoin.scripts.scriptHashOutput(redeemScript.getHash()),
-    address = bitcoin.Address.fromOutputScript(scriptPubKey, this.network).toString()
-
-  if (address) {
-    return {
-      pubKeys : pubKeys,
-      redeemScript : redeemScript,
-      address : address
-    }
-  }
-  else {
-    return 'address error'
-  }
-}
-
-PaymentChannel.prototype.getAccountBalance = function(multisigAddress,cb) {
+PaymentChannel.prototype.getAccountBalance = function(multisigObject,cb) {
   
   var value = 0,
     firstTxId,
     self = this
   
-  this.chain.getAddressUnspents(multisigAddress.multisigAddress, function(err, utxos){
+  this.chain.getAddressUnspents(multisigObject.multisigAddress, function(err, utxos){
     if (err) return cb(err)
     utxos.forEach(function(utxo) {
       value+=utxo.value
     })
     if (value) {
       firstTxId = utxos[0].transaction_hash
-      multisigAddress.balance = value
+      multisigObject.balance = value
     }
     if (firstTxId) {
-      multisigAddress.firstTxId = firstTxId
-      if (!multisigAddress.returnAddress || multisigAddress.returnAddress === "") {
+      multisigObject.firstTxId = firstTxId
+      if (!multisigObject.returnAddress || multisigObject.returnAddress === "") {
         self.chain.getTransaction(firstTxId, function(err,res){
           if (err) cb(err)
-          multisigAddress.returnAddress = res.inputs[0].addresses[0]
-          cb(null,multisigAddress)
+          multisigObject.returnAddress = res.inputs[0].addresses[0]
+          cb(null,multisigObject)
         })
       }
-      else cb('error')
+      else cb(null,multisigObject)
     }
-    else cb('error')
+    else cb(new Error('error'))
   })
 }
 
-PaymentChannel.prototype.createTick = function(multisigObject,receivingAddress, cb) {
+PaymentChannel.prototype.createTick = function(multisigObject, publicKey, customTickAmount, cb) {
   
   var unspents,
     self = this
+    receivingAddress = bitcoin.ECPubKey.fromHex(publicKey).getAddress(this.network);
 
   this.chain.getAddressUnspents(multisigObject.multisigAddress, function(err, unspents) {
     if (err) return cb(err)
-
+    var amount = customTickAmount || self.tickAmount
     var publicKeys = multisigObject.publicKeys
     publicKeys = publicKeys.map(bitcoin.ECPubKey.fromHex)
     var returnAddress = multisigObject.returnAddress
@@ -121,14 +122,14 @@ PaymentChannel.prototype.createTick = function(multisigObject,receivingAddress, 
     var txb = new bitcoin.TransactionBuilder()
     var value = 0
     var numOfSigns = 0
-    var amount = lastAmount+self.tickAmount
+    amount = amount + lastAmount
     unspents.forEach(function(unspent) {
       numOfSigns++
       value += unspent.value
       txb.addInput(unspent.transaction_hash, unspent.output_index)
     })
     if (value < amount + self.fee) {
-      return callback('Out of money, needs '+amount+', but you have only '+(value-fee)+'. Please deposite more money...')
+      return callback(new Error('Out of money, needs '+amount+', but you have only '+(value-fee)+'. Please deposite more money...'))
     }
 
     txb.addOutput(receivingAddress, amount)
@@ -165,29 +166,28 @@ PaymentChannel.prototype.closePaymentChannel = function(multisigObject,secondPri
     this.chain.sendTransaction(paymentTx.toHex(), cb)
   }
   else {
-    cb('No payment found for the session.')
+    cb(new Error('No payment found for the session.'))
   }
 }
 
-PaymentChannel.prototype.firstSignTick = function(multisigAddress,firstPrivateKey,cb) {
+PaymentChannel.prototype.firstSignTick = function(multisigObject,firstPrivateKey,cb) {
   
-  var privateKeyObject = bitcoin.ECKey.fromWIF(privateKey)
-  var tx = bitcoin.Transaction.fromHex(multisigAddress.lastTickTx)
+  var privateKeyObject = bitcoin.ECKey.fromWIF(firstPrivateKey)
+  var tx = bitcoin.Transaction.fromHex(multisigObject.lastTickTx)
   var txb = bitcoin.TransactionBuilder.fromTransaction(tx)
             
-  redeemScript = bitcoin.Script.fromHex(multisigAddress.redeemScript)
-  for (var i = 0; i <  multisigAddress.numOfSigns; i++) {
+  redeemScript = bitcoin.Script.fromHex(multisigObject.redeemScript)
+  for (var i = 0; i <  multisigObject.numOfSigns; i++) {
     txb.sign(i, privateKeyObject, redeemScript)
   }
   
   var paymentTx = txb.buildIncomplete()  
-  var lastAmount = multisigAddress.lastAmount || 0
+  var lastAmount = multisigObject.lastAmount || 0
 
-  multisigAddress.lastAmount = lastAmount + this.tickAmount
-  multisigAddress.lastSignedTx = paymentTx.toHex()
+  multisigObject.lastAmount = lastAmount + this.tickAmount
+  multisigObject.lastSignedTx = paymentTx.toHex()
   
-  cb(null,multisigAddress)
+  cb(null,multisigObject)
 }
 
 module.exports = PaymentChannel;
-
