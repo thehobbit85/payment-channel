@@ -24,7 +24,7 @@ function PaymentChannel(options) {
   this.balance = 0
 }
 
-util.inherits(PaymentChannel, events.EventEmitter);
+util.inherits(PaymentChannel, events.EventEmitter)
 
 var getMultisigFromPublicKeys = function(myPublicKey,secondPartyPublicKey) {
 
@@ -72,17 +72,19 @@ PaymentChannel.prototype.getAccountBalance = function(cb) {
       firstTxId = utxos[0].transaction_hash 
     }
 
-    self.emit("balance.synced", self.balance, self)
-
     if (firstTxId) {
       if (!self.returnAddress) {
         self.chain.getTransaction(firstTxId, function(err,res){
           if (err) cb(err)
           self.returnAddress = res.inputs[0].addresses[0]
+          self.emit("balance.synced", self.balance, self)
           cb(null,self)
         })
       }
-      else cb(null,self)
+      else {
+        self.emit("balance.synced", self.balance, self)
+        cb(null,self)
+      }
     }
     else cb(new Error('error'))
   })

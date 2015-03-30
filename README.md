@@ -17,25 +17,22 @@ Two JavaScript modules that will create a payment channel between the server sid
 
 ```json
 {
+  "privateKey" : "String",
+  "returnAddress" : "String",
+  "counterPartyAddress" : "String", 
+  "counterPartyPublicKey" : "String",
   "chain" : {
     "keyId": "String",
     "keySecret": "String",
     "blockChain": "String"
   },
-  "counterPartyPublicKey" : "String",
-  "returnAddress" : "String",
-  "counterPartyAddress" : "String", 
-  
-  "privateKey" : "String",
-
   "publicKeys" : ["String"],
   "fee" : "Number",
-  "tickAmount" : "Number"
+  "tickAmount" : "Number",
   "lastAmount" : "Number",
   "lastSignedTx" : "String",
   "redeemScript" : "String",
-  "balance" : "Number"
-
+  "balance" : "Number",
   "multisigAddress" : "String",
 }
 ```
