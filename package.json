@@ -1,0 +1,49 @@
+{
+  "name": "payment-channel",
+  "version": "1.0.0",
+  "description": "Two JavaScript modules that will create a payment channel between the server side (nodejs) and the client side (JavaScript jQuery) on top of Socket.io framework. With a payment channel you can provide a trust-less time/token based payment system that provide both the user's and the provider protection against fruad and it's currently the best way of providing this kind of service.",
+  "main": "./src/payment-channel.js",
+  "scripts": {
+    "test": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thehobbit85/payment-channel.git"
+  },
+  "keywords": [
+    "bitcoin",
+    "payment",
+    "channel",
+    "secure",
+    "trustless"
+  ],
+  "author": "thehobbit85",
+  "contributors": [
+    {
+      "name": "thehobbit85",
+      "email": "thehobbit85@gmail.com"
+    },
+    {
+      "name": "bejavu",
+      "email": "bejavu@gmail.com"
+    },
+    {
+      "name": "nadav",
+      "email": "nadav@bitrated.com"
+    }
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/thehobbit85/payment-channel/issues"
+  },
+  "homepage": "https://github.com/thehobbit85/payment-channel",
+  "dependencies": {
+    "async": "^0.9.0",
+    "bitcoinjs-lib": "^1.5.6",
+    "chain-node": "^3.1.0",
+    "express": "^4.12.3",
+    "mocha": "^2.2.1",
+    "qr-encode": "^0.3.0",
+    "socket.io": "^1.3.5"
+  }
+}
