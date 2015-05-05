@@ -1,3 +1,4 @@
 node_modules
 testParams.json
 ./test/testParams.json
+properties.conf
