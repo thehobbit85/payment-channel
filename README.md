@@ -1,5 +1,7 @@
 # Payment-Channel
 
+!!!!!!!  WIP  !!!!!!!
+
 ## Payment Channel API
 
 A bitcoin payment channel API that allowes you to provide a trust-less time/token based payment system that provide both the user and the provider protection against fruad and it's currently the best way of providing this kind of service.
